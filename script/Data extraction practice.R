@@ -32,3 +32,11 @@ library(rentrez)
 pdb_entries <- pdbfetch(keyword = "7RKO", format = "xml")
 entrez_dbs()
 entrez_db_summary("structure")
+entrez_db_searchable("sra")
+library(devtools)
+
+##Installing and loading bio3d package
+install.packages("bio3d", dependencies = TRUE)
+library(bio3d)
+help(package="bio3d")
+vignette(package="bio3d")
