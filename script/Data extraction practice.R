@@ -38,5 +38,53 @@ library(devtools)
 ##Installing and loading bio3d package
 install.packages("bio3d", dependencies = TRUE)
 library(bio3d)
-help(package="bio3d")
-vignette(package="bio3d")
+pdb1=read.pdb("data/pdb_files/Plasmodium/1a3o.pdb")
+str(pdb1)
+pdb1
+
+#to find attributes of a pdb file
+attributes(pdb1)
+
+#to access specific attribute
+pdb1$remark
+head(pdb1$atom)
+
+#other packages needed
+library(ggplot2)
+install.packages("ggrepe1")
+install.packages("devtools")
+install.packages("BiocManager")
+BiocManager::install("msa")
+a
+devtools::install_bitbucket("Grantlab/bio3d-view")
+maleria = get.seq("1a3o_A")
+maleria
+#blast or hmmer search
+maleria_blast = blast.pdb(maleria)
+
+#plotting the summary search result of the above. Note this generated a cuttoff based on the e-value. This will remove duplicated structures to our query structure. We can use attributes(hits$pdb.id) to know if we have duplicate
+hits = plot(maleria_blast)
+
+hits = NULL
+attributes(hits$pdb.id)
+
+#downloading related pdb files. Note that download all the blast structures, save them in path = pdbs and unzip them
+files = get.pdb(hits$pdb.id, path = "pdbs", split = TRUE, gzip = TRUE)
+
+#align and superpose structure using pdbaln
+#align related structures
+pdbs =pdbaln(files, fit = TRUE, exefile="msa" )
+
+#selecting vectors containing PDB codes for figure axis
+ids = basename.pdb(pdbs$id)
+ids
+
+#draw schematic alignment view. The white represent where there is no alignment while the gray represent areas that are aligned and the red bar represent conserved region in the aligned sequences.
+plot(pdbs, labels = ids)
+
+#viewing superposed structures using  bio3d.view()
+library(Rpdb)
+library(rgl)
+visualize(pdbs)
+view3d(pdbs)
+view(pdbs)

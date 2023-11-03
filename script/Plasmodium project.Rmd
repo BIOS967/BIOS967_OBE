@@ -1,0 +1,9 @@
+---
+title: "Plasmodium_Practice"
+author: "David Obe"
+date: "2023-11-02"
+output: html_document
+---
+
+```first trying to locate my woking directory
+getwd()
