@@ -3,21 +3,11 @@
 install.packages("bio3d")
 library(bio3d)
 
-pdb1=read.pdb("data/pdb_files/1rp0.pdb.gz")
-str(pdb1)
-pdb1$remark
-summary(pdb1)
-str(summary(pdb1))
-  #read multiple pdb files
-
-files_to_import=list.files("data/pdb_files", full.names = T)
-pdb_list=lapply(files_to_import, function(x) read.pdb(x))
-
 
 #####
 #you can read the pdb file just as a text file this way:
-p1=scan(file="data/pdb_files/1rp0.pdb.gz", what="text")
-p2=scan(file="data/pdb_files/7rk0.pdb.gz", what="text")
+p1=scan(file="pdbs/1A00.pdb", what="text")
+
 
 #this will read the file by each line and tab. So a lot of this will be just one word.
 p1
@@ -32,7 +22,9 @@ p1[str_which(p1, "RESOLUTION.")+1]
 #so you just have to save that as a number
 as.numeric(p1[str_which(p1, "RESOLUTION.")+1])
 
-#This should then work on other pdb files, like the second one I imported above.
-as.numeric(p2[str_which(p2, "RESOLUTION.")+1])
 
-#With this, you should be able to scale up and batch import and process a bunch of pdb files. I'll leave that to you to try!
+#now do as list
+p1=scan(file="pdbs/1A00.pdb", what="text")
+p2=scan(file="pdbs/1A3O.pdb", what="text")
+p.list=list(p1, p2)
+sapply(p.list, function(x) as.numeric(x[str_which(x, "RESOLUTION.")+1]))
