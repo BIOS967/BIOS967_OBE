@@ -1,5 +1,4 @@
 
-
 #install.packages("bio3d")
 library(bio3d)
 
@@ -133,16 +132,3 @@ res=sapply(data_list, function(x) as.numeric(x[str_which(x, "RESOLUTION.")+1, na
 
 sapply(res, function(x) x[is.na(x)==F]) #just get the values that are not NA
 
-res[[101]]
-res[1]
-dat=data.frame(resolution=res)
-class(res[1])
-summary(res)
-res[5]
-remove(res[NA])
-
-#unlist dataset using unlist so that data is seen as numeric.
-unlist(res)
-is.na(res)
-complete.cases(res)
-na.omit(res)
