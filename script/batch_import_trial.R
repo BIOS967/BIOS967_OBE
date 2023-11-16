@@ -3,6 +3,13 @@
 #install.packages("bio3d")
 library(bio3d)
 
+##batch import
+list.files("pdbs", pattern=".pdb") #call all of the .pdb file names in the folder
+
+list.files("pdbs", pattern=".pdb", full.names=T) #get path names to those files
+
+pdbs_list=lapply(list.files("pdbs", pattern=".pdb", full.names=T), function(x) scan(file=x, what="text"))
+
 
 #####
 #you can read the pdb file just as a text file this way:
@@ -115,7 +122,7 @@ data_list=list()
 for (i in file_name) {
   data=scan(i,what="text")
   name=gsub(".pdb","",i)
-  data_list[[name]]=data
+  data_list[[i]]=data
 }
 #then, you can just search for "RESOLUTION." with the period at the end. The str_which() function will tell you which item in "p1" gives you the exact match.
 library(stringr)
@@ -123,6 +130,8 @@ str_which(p1, "RESOLUTION.")
 
 #The item that follows that is the the resolution, so you can look that up by using p1[ ], and adding one to the item number of "RESOLUTION." This should give you "1.60"
 res=sapply(data_list, function(x) as.numeric(x[str_which(x, "RESOLUTION.")+1, na.rm=TRUE]))
+
+sapply(res, function(x) x[is.na(x)==F]) #just get the values that are not NA
 
 res[[101]]
 res[1]
