@@ -122,7 +122,7 @@ library(stringr)
 str_which(p1, "RESOLUTION.")
 
 #The item that follows that is the the resolution, so you can look that up by using p1[ ], and adding one to the item number of "RESOLUTION." This should give you "1.60"
-res=sapply(data_list, function(x) as.numeric(x[str_which(x, "RESOLUTION.")+1]))
+res=sapply(data_list, function(x) as.numeric(x[str_which(x, "RESOLUTION.")+1, na.rm=TRUE]))
 
 res[[101]]
 res[1]
