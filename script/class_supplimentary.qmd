@@ -1,0 +1,205 @@
+---
+title: "BIMM_143_Data_Visualization"
+author: "David Obe"
+format: html
+---
+
+## Analysing Carbonic Anhydrase II using R
+
+Carbonic anhydrase (CA EC 4.2.1.1) is an enzyme that is responsible for the reversible catalysis of carbon dioxide to bicarbonate and hydrogen ion. Although this reaction can proceed without an enzyme, the rate at which it proceeds naturally is too slow compared to the rate at which CO2 is produced within living system making CA important enzyme in regulation of pH homeostasis within the cell.
+
+![*CA generalized reaction*](images/Screenshot%202023-11-20%20at%205.32.49%20PM.png){width="393"}
+
+"CAs are widespread in both prokaryotes and eukaryotes, with eight genetic families encoding them, the α-, β-, γ-, δ-, ζ-, η-, θ-, and ι-classes (Supuran, 2023). The α-class is found in mammals and presently have 15 isoforms with different catalytic activity, subcellular localization and and tissue distribution such as those found in the cytosol, membrane-bonded CAs, mitochondrial, and secreted form, of all these isoforms, human CA II (hCA II) is the most researched (Supuran, 2008, Kim *et al.,* 2016).
+
+CA has been linked to different physiological and pathological conditions and based on this, many modulators of CA has been developed to either inhibit or activate this enzyme in different disease conditions. Recently, CA II was suggested to be linked with Alzheimer disease a neurodegenerative disease that result into loss of memory.
+
+![*Involvement of hCA various diseases and the isoforms responsible (Supuran 2023)*.](images/Screenshot%202023-11-20%20at%205.35.56%20PM.png){width="551"}
+
+Therefore, understanding the structural changes that occur during the catalysis of this enzyme can help determine if this enzyme undergoes any motion during catalysis and how this is important for the activity of this enzyme also also help in development of selective modulators of CAs in Alzheimer disease.
+
+```{r}
+library(ggplot2)
+```
+
+You can add options to executable code like this
+
+```{r}
+install.packages("gapminder")
+library(gapminder)
+```
+
+Installing packages that are needed for plotting good looking and animated data in R
+
+```{r}
+install.packages("dplyr")
+install.packages("gifski")
+install.packages("gganimate")
+install.packages("patchwork")
+library(dplyr)
+library(gifski)
+library(gganimate)
+library(patchwork)
+library(bio3d)
+```
+
+```{r}
+CA <- read.pdb("1ca2")
+```
+
+```{r}
+print(CA)
+```
+
+```{r}
+attributes(CA)
+```
+
+### Predicting the flexibility of carbonic anhydrase
+
+```{r}
+flex <- nma(CA)
+```
+
+#### To visualize what nature of our structure we use the plot in base R
+
+```{r}
+plot(flex)
+```
+
+This is just a graph showing that our enzyme undergoes little to know motion. We need to generate a molecular trajectory for this in a movie form using "mktrj()" function
+
+```{r}
+mktrj(flex, file="1ca2_f1.pdb")
+```
+
+## Comparison analysis
+
+This are the packages that are need for doing this comparative analysis
+
+```{r}
+install.packages("devtools")
+install.packages("BiocManager")
+
+BiocManager::install("msa")
+devtools::install_bitbucket("Grantlab/bio3d-view")
+```
+
+Download other structures belonging to carbonic anhydrase 2
+
+```{r}
+library(bio3d)
+carbonic <- get.seq("1ca2")
+carbonic
+```
+
+Performing blast search
+
+```{r}
+blastCA <- blast.pdb(carbonic)
+```
+
+To visualize our result, let's use the "plot" function in base R
+
+```{r}
+p <- plot(blastCA)
+```
+
+Trying plot.blast
+
+```{r}
+plot.blast(blastCA)
+```
+
+We only need the top scoring hits
+
+```{r}
+head(p$pdb.id)
+```
+
+Now from the identified structures, we can use get.pdb() and pdbslit() function to fetch and parse the structures we have identified. To download related PDB files
+
+```{r}
+CA_files <- get.pdb(p$pdb.id, path = "pdbs", split = TRUE, gzip = TRUE)
+```
+
+Align and superpose structures pdbaln() function would align and also optionally fit the identified PDB structures.
+
+```{r}
+pdbs <- pdbaln(CA_files, fit = TRUE, exefile="msa")
+```
+
+Trying to visualize my alignment result
+
+```{r}
+ids <- basename.pdb(pdbs$id)
+plot(pdbs, labels = ids)
+```
+
+Annotation of collected PDB structures
+
+```{r}
+ca_anno <- pdb.annotate(ids)
+unique(ca_anno$source)
+```
+
+```{r}
+ca_anno
+```
+
+### Principal component analysis
+
+```{r}
+ca.xray <- pca(pdbs)
+plot(ca.xray)
+```
+
+To analyze pairwise structural deviation
+
+```{r}
+#rmsd() will calculate the root mean standard deviation values of the structural ensemble
+ca_rd <- rmsd(pdbs)
+is.na(pdbs)
+pdbs$resno
+#structure baesd clustering
+hc.rd <- hclust(dist(ca_rd))
+grps.rd <- cutree(hc.rd, k=3)
+
+plot(ca.xray, 1:2, col="gray50", bg=grps.rd, pch = 21, cex = 1)
+```
+
+Making trajectory for this result
+
+```{r}
+ca_pc1 <- mktrj(ca.xray, pc = 1, file="ca_pc1.pdb")
+```
+
+Adding label to the PC plot
+
+```{r}
+library(ggplot2)
+install.packages("ggrepel")
+library(ggrepel)
+
+df <- data.frame(PC1=ca.xray$z[,1],
+                 PC2=ca.xray$z[,2],
+                 col=as.factor(grps.rd),
+                 ids=ids)
+p <- ggplot(df) +
+  aes(PC1, PC2, col=col, label=ids)+
+  geom_point(size=2) +
+  geom_text_repel(max.overlaps = 50)+
+  theme(legend.position = "none")
+
+p
+```
+
+### Using normal mode analysis comparing all structures obtained from pdb on CA II.
+
+```{r}
+modes <- nma(pdbs)
+```
+
+```{r}
+plot(modes, pdbs, col=grps.rd)
+```
