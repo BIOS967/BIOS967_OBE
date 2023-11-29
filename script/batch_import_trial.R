@@ -1,7 +1,37 @@
 
-#install.packages("bio3d")
+#install all packages that are needed for this analysis
+install.packages("bio3d")
+install.packages("ggplot2")
+install.packages("gapminder")
+install.packages("dplyr")
+install.packages("gifski")
+install.packages("gganimate")
+install.packages("patchwork")
+library(dplyr)
+library(gifski)
+library(gganimate)
+library(patchwork)
+library(ggplot2)
 library(bio3d)
+library(gapminder)
 
+# downloading file from protien data bank
+CA <- read.pdb("1ca2")
+print(CA)
+CA$atom
+CA$atom[1:2, c("eleno", "elety", "x", "y", "z")]
+CA$atom$elety[1:2]
+plot.bio3d(CA$atom$b[CA$calpha], sse=CA, typ="l", ylab="B-factor")
+# getting to know the dimession of our coordinates "x,y,z"
+CA$xyz
+dim(CA$xyz)
+CA$xyz[ 1, atom2xyz(1:2)] #obtaining the coordinate of atom 2
+
+# How flexible is CA
+
+flex = nma(CA)
+
+plot(flex)
 ##batch import
 list.files("pdbs", pattern=".pdb") #call all of the .pdb file names in the folder
 
@@ -128,7 +158,9 @@ library(stringr)
 str_which(p1, "RESOLUTION.")
 
 #The item that follows that is the the resolution, so you can look that up by using p1[ ], and adding one to the item number of "RESOLUTION." This should give you "1.60"
-res=sapply(data_list, function(x) as.numeric(x[str_which(x, "RESOLUTION.")+1, na.rm=TRUE]))
+res=sapply(data_list, function(x) as.numeric(x[str_which(x, "RESOLUTION.")+1]))
 
 sapply(res, function(x) x[is.na(x)==F]) #just get the values that are not NA
+
+# Now use ggplot
 
