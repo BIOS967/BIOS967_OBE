@@ -1,12 +1,5 @@
 
 #install all packages that are needed for this analysis
-install.packages("bio3d")
-install.packages("ggplot2")
-install.packages("gapminder")
-install.packages("dplyr")
-install.packages("gifski")
-install.packages("gganimate")
-install.packages("patchwork")
 library(dplyr)
 library(gifski)
 library(gganimate)
