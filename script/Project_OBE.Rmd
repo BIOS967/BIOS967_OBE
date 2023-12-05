@@ -33,6 +33,15 @@ blast <- blast.pdb(ca)
 ### Reading the CA structure from Protein Data Bank (PDB) database.
 
 PDB is a repository containing both experimentally resolved structures and computationally modeled structures. The PDB is under the watchful eyes of three musketeers forming a consortium (wwPDB). This consortium is between Europe (PDBe), Japan (PDBj), and the USA (RCSB PDB). They ensure that data published on these databases are free and accessible to the public. This search returned 237 hits.
+```{r}
+pdb <- read.pdb("1ca2")
+plot.bio3d(pdb$atom$b[pdb$calpha], sse=pdb, type="l", ylab="B-factor")
+```
+Running the normal mode analysis on 1CA2
+```{r}
+ca2 <- nma(pdb)
+plot(ca2)
+```
 
 ```{r}
 ca <- get.seq("1ca2")
@@ -60,8 +69,7 @@ ca.raw <- get.pdb(hits$pdb.id, path = "ca_pdbs", gzip = TRUE)
 ```
 ```{r}
 #since CA II is a single monomeric protein, we need not use pdbsplit to split into different chains. We only need to align or data files
-ca.aln <- read.fasta('aln.fa')
-ca.all <- read.fasta.pdb(ca.aln)
+ca.all <- pdbaln(ca.raw, fit=TRUE, exefile="msa")
 ```
 There are 163 structures that were manually aligned. Some of the structures obtained might include missing residues or redundant structures. This can negatively affect our analysis, therefore we would need to remove these damaged sequences to reduce bias and improve computational speed.
 ```{r}
