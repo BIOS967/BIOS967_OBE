@@ -202,20 +202,7 @@ gs.xray <- geostas(ca.trim, k=2, fit = FALSE)
 m.ca <- mktrj(ca.xray, pc=1, chain=gs.xray$grps)
 ```
 
-```{r}
-# Building conformational ensemble
-trj.nma <- mktrj.enma(modes, ca.trim, m.inds = 1:5, s.inds = NULL, mag=10, step = 2, rock = FALSE)
-trj.nma
-```
-```{r}
-# Foit to invariant core
-trj.nma <- fit.xyz(trj.nma[1,], trj.nma,
-                   fixed.inds = ca.core$c0.5A.xyz,
-                   mobile.inds = ca.core$c0.5A.xyz)
 
-# Run geostas to find domains
-gs.nma <- geostas(trj.nma, k=2, fit=FALSE)
-```
 
 ## References
 
