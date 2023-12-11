@@ -36,7 +36,7 @@ library(gganimate)
 library(patchwork)
 library(bio3d)
 library(msa)
-library(bio3d.view)
+#library(bio3d.view)
 library(ggplot2)
 library(ggrepel)
 library(bigmemory)
@@ -66,14 +66,14 @@ Since there are about 15 isoforms of CA, we tried to compare the structure of th
 
 ```{r, message=FALSE, results="hide"}
 ids <- c("2FOY_A", "1CA2", "4XIW_B","5IPZ_A", "1KEQ_A", "3FE4_A", "7P1A_A", "2W2J_A", "6RQU_A", "1JCZ_A", "3CZV_A", "1RJ5_A", "1DMX_A")
-files <- get.pdb(ids, split = TRUE)
+files.idf <- get.pdb(ids, split = TRUE)
 ```
 
 The get.pdb() function will download the requested files. Argument split = TRUE requests further that we want to extract particular chains, i.e. those specified by the _A suffix.
 
 ```{r, message=FALSE, results='hide'}
 # Alignmnet
-pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+pdbs <- pdbaln(files.ids, fit = TRUE, exefile="msa")
 ```
 ```{r, results='hide'}
 pdbs
@@ -148,9 +148,13 @@ hits$pdb.id
 ```
 It is the structure that we need to work with, therefore we use the get.pdb() to retrieve the structures of our 166 closely related structures.
 
-```{r}
+```{r, message=F, eval=FALSE}
 # Retrieve data from PDB
 files <- get.pdb(hits$pdb.id, path = "pdbs", split = TRUE, gzip = TRUE)
+```
+
+```{r}
+load("data/files.rdata")
 ```
 The sequences obtained are then aligned using the pdbaln() function.
 
