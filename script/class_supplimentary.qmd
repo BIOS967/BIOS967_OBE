@@ -1,5 +1,9 @@
 ---
+<<<<<<< HEAD
 title: "BIMM_143_Data_Visualization"
+=======
+title: "Studying the structure of carbonic anhydrase for drug targeting"
+>>>>>>> 4cb459a72fd02ef77e234b6c843082e62d9b1260
 author: "David Obe"
 format: html
 ---

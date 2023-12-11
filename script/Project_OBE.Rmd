@@ -106,9 +106,9 @@ print(unique(ca.annot$source))
 ```
 
 ## Principal Component Analysis of Carbonic Anhydrase II
-```{r}
+```{r, message=FALSE, results='hide'}
 # locate invariant core
-ca.core <- core.find(ca.trim)
+cacore <- core.find(trim)
 
 # Now that we have determined the core, we can superimpose all structures to core
 ca.trim$xyz = pdbfit(ca.trim, ca.core$c0.5A.xyz)
@@ -157,14 +157,16 @@ pdbfit(trim.pdbs(ca.trim, row.inds = which(grps.psd==3)), outpath="grps3") ## oc
 ```{r}
 modes <- nma(ca.trim, rm.gaps=TRUE, ncore=4)
 ```
-This modes contains aligned normal mode data including fluctuations, RMSIP data, and aligned eigenvectors. A short summary of the modes object is shown below
+These modes contains aligned normal mode data including fluctuations, RMSIP data, and aligned eigenvectors. A short summary of the modes object is shown below
+
 ```{r}
 print(modes)
 ```
+
 ```{r}
-plot(modes, pdbs=ca.trim, col=grps.psd, label=NULL)
+plot(modes, pdbs=trim, col=grps.rd, label=NULL)
 ```
- The fluctuation wave for CA II. Each line represent mode flunctuation for individual structures. Green line (occluded), Black line (Open), and Red line (Closed)
+ The fluctuation wave for CA II. Each line represent mode fluctuation for individual structures. Green line (occluded), Black line (Open), and Red line (Closed)
 
 ```{r}
 hc.nma <- hclust(as.dist(1-modes$rmsip))
