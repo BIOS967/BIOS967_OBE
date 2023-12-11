@@ -1,0 +1,211 @@
+---
+title: "Understanding the structure of Carbonic Anhydrase Using R"
+author: "David Obe"
+format: html
+---
+## Analysing Carbonic Anhydrase II using R
+
+Carbonic anhydrase (CA EC 4.2.1.1) is an enzyme that is responsible for the reversible catalysis of carbon dioxide to bicarbonate and hydrogen ion. Although this reaction can proceed without an enzyme, the rate at which it proceeds naturally is too slow compared to the rate at which CO2 is produced within living system making CA important enzyme in regulation of pH homeostasis within the cell.
+
+![*CA generalized reaction*](images/Screenshot%202023-11-20%20at%205.32.49%20PM.png){width="393"}
+```{r}
+library(ggplot2)
+library(gapminder)
+library(dplyr)
+library(gifski)
+library(gganimate)
+library(patchwork)
+library(bio3d)
+```
+
+"CAs are widespread in both prokaryotes and eukaryotes, with eight genetic families encoding them, the α-, β-, γ-, δ-, ζ-, η-, θ-, and ι-classes (Supuran, 2023). The α-class is found in mammals and presently have 15 isoforms with different catalytic activity, subcellular localization and and tissue distribution such as those found in the cytosol, membrane-bonded CAs, mitochondrial, and secreted form, of all these isoforms, human CA II (hCA II) is the most researched (Supuran, 2008, Kim *et al.,* 2016).
+
+CA has been linked to different physiological and pathological conditions and based on this, many modulators of CA has been developed to either inhibit or activate this enzyme in different disease conditions. Recently, CA II was suggested to be linked with Alzheimer disease a neurodegenerative disease that result into loss of memory.
+
+![*Involvement of hCA various diseases and the isoforms responsible (Supuran 2023)*.](images/Screenshot%202023-11-20%20at%205.35.56%20PM.png){width="551"}
+
+Therefore, understanding the structural changes that occur during the catalysis of this enzyme can help determine if this enzyme undergoes any motion during catalysis and how this is important for the activity of this enzyme. This analysis will also help in development of selective modulators of CAs in Alzheimer disease.
+
+```{r}
+ca <- get.seq("1ca2")
+blast <- blast.pdb(ca)
+```
+### Reading the CA structure from Protein Data Bank (PDB) database.
+
+PDB is a repository containing both experimentally resolved structures and computationally modeled structures. The PDB is under the watchful eyes of three musketeers forming a consortium (wwPDB). This consortium is between Europe (PDBe), Japan (PDBj), and the USA (RCSB PDB). They ensure that data published on these databases are free and accessible to the public. This search returned 237 hits.
+```{r}
+pdb <- read.pdb("1ca2")
+plot.bio3d(pdb$atom$b[pdb$calpha], sse=pdb, type="l", ylab="B-factor")
+```
+Running the normal mode analysis on 1CA2
+```{r}
+ca2 <- nma(pdb)
+plot(ca2)
+```
+
+```{r}
+ca <- get.seq("1ca2")
+blast <- blast.pdb(ca)
+```
+1CA2 is a monomeric metalloprotein containing zinc (Avvaru *et al.,* 2009). This structure is made up 256 amino acid residues and it was obtained from the erythrocytic of human (Eriksson *et al.,* 1988).
+
+![Figure 3: Active site residues of CA (https://academic-accelerator.com/encyclopedia/carbonic-anhydrase)](images/Active_site_of_CAII_(cropped).jpg){width="252"}
+
+The visualization of our blast search showed that their is a major shift in E-value scores which suggest that some of the sequences obtained are not relevant to our research and might result into false positives. Therefore, we set a cutoff value for our analysis. This yielded a total of 166 hits that have similar E-values as shown in the graph below.
+
+```{r}
+plot.blast(blast)
+```
+```{r}
+hits <- plot(blast, cutoff = 500)
+```
+
+Based on the sequences, we need to get all the 163 hits and align to structures to understand the conformational changes that occur in carbonic anhydrase II.
+
+```{r}
+hits$pdb.id
+#fetching related sequences
+ca.raw <- get.pdb(hits$pdb.id, path = "ca_pdbs", gzip = TRUE)
+```
+```{r}
+#since CA II is a single monomeric protein, we need not use pdbsplit to split into different chains. We only need to align or data files
+ca.all <- pdbaln(ca.raw, fit=TRUE, exefile="msa")
+```
+There are 163 structures that were manually aligned. Some of the structures obtained might include missing residues or redundant structures. This can negatively affect our analysis, therefore we would need to remove these damaged sequences to reduce bias and improve computational speed.
+```{r}
+# remove structure with missing residues
+ca.conn <- inspect.connectivity(ca.all, cut = 4.05)
+ca.trim <- trim.pdbs(ca.all, row.inds=which(ca.conn))
+
+# which structures were omitted?
+which(!ca.conn)
+
+# to remove conformational redundant structures
+ca.rd <- filter.rmsd(ca.trim$xyz, cutoff = 0.1, fit = TRUE)
+ca.trim <- trim.pdbs(ca.trim, row.inds = ca.rd$ind)
+
+# manually remove the last 3 sequences because they do not align 
+#ca.excl <- unlist(lapply(c("4PQ7", "6EQU", "5ZXW"), grep, ca.trim$id))
+#ca.pdbs <- trim.pdbs(ca.trim, row.inds = which(!(1:length(ca.trim$id) %in% ca.excl)))
+
+# list of PDB codes of our final selection
+#ca.ids <- unlist(strsplit(basename(ca.pdbs$id), split=".pdb")) 
+
+ca.id <- unlist(strsplit(basename(ca.trim$id), split=".pdb"))
+```
+
+```{r}
+# Visualize my pdb data
+print(ca.trim, alignment = FALSE)
+```
+## Annotate PDB structure
+We would like to know the organism from which these structures were obtained. The result showed that all the structures obtained are from the same organism - *Homo sapiens*.
+```{r}
+ca.annot <- pdb.annotate(ca.id)
+print(unique(ca.annot$source))
+```
+
+## Principal Component Analysis of Carbonic Anhydrase II
+```{r, message=FALSE, results='hide'}
+# locate invariant core
+cacore <- core.find(trim)
+
+# Now that we have determined the core, we can superimpose all structures to core
+ca.trim$xyz = pdbfit(ca.trim, ca.core$c0.5A.xyz)
+
+# Recall that we hard 24 gaps, we want to identify those gaps, and perform principal component analysis. To do this find the position gap and the residue gap.
+gap.pos <- gap.inspect(ca.trim$xyz)
+gap.res <- gap.inspect(ca.trim$ali)
+ca.xray <- pca.xyz(ca.trim$xyz[,gap.pos$f.inds])
+```
+```{r}
+plot(ca.xray)
+```
+
+To perform a clustering analysis on this pdb data, we need to find the pairwise structural deviation
+
+```{r}
+ca.psd <- rmsd(ca.trim)
+hc.psd <- hclust(dist(ca.psd))
+grps.psd <- cutree(hc.psd, k=4)
+```
+To demonstrate if CA II exist in different conformations, we ploted the PC 1 against PC 2 and found that the structures majorly exist in open conformation (BLACK) and only few in closed conformation (RED)
+
+```{r}
+plot(ca.xray$z[,1:2], col="gray50", pch=16, cex=1.3,
+     ylab="Pricipal Component 2", xlab="Principal Component 1")
+points(ca.xray$z[,1:2], col=grps.psd, pch=16, cex=0.9)
+```
+```{r}
+plot(ca.xray$z[,2:3], col="gray50", pch=16, cex=1.3,
+     ylab="Pricipal Component 2", xlab="Principal Component 3")
+points(ca.xray$z[,2:3], col=grps.psd, pch=16, cex=0.9)
+```
+Although the PCA was able to show us the different conformations that CA can exist, it did not account for the major structural variations.
+```{r}
+mktrj(ca.xray, pc=1,
+      resno=ca.trim$resno[1, gap.res$f.inds],
+      resid=ca.trim$resid[1, gap.res$f.inds])
+
+# clustering by conformation
+pdbfit(trim.pdbs(ca.trim, row.inds = which(grps.psd==1)), outpath="grps1") ## closed
+pdbfit(trim.pdbs(ca.trim, row.inds = which(grps.psd==2)), outpath="grps2") ## open
+pdbfit(trim.pdbs(ca.trim, row.inds = which(grps.psd==3)), outpath="grps3") ## occluded
+```
+
+## Normal Mode Analysis (NMA)
+```{r}
+modes <- nma(ca.trim, rm.gaps=TRUE, ncore=4)
+```
+These modes contains aligned normal mode data including fluctuations, RMSIP data, and aligned eigenvectors. A short summary of the modes object is shown below
+
+```{r}
+print(modes)
+```
+
+```{r}
+plot(modes, pdbs=trim, col=grps.rd, label=NULL)
+```
+ The fluctuation wave for CA II. Each line represent mode fluctuation for individual structures. Green line (occluded), Black line (Open), and Red line (Closed)
+
+```{r}
+hc.nma <- hclust(as.dist(1-modes$rmsip))
+grps.nma <- cutree(hc.nma, k=4)
+
+heatmap(1-modes$rmsip, distfun = as.dist, labRow = ca.id, labCol = ca.id,
+        ColSideColors = as.character(grps.nma), RowSideColors = as.character(grps.nma))
+```
+## Fluctuation Analysis
+Looking at the different conformations we have so far, only two conformation are pronounced, the open (black) and closed conformation (red). If we compare this two mode fluctuations, we can reveal specific regions with distinct flexibility patterns.
+```{r}
+cols <- grps.psd
+cols[which(cols!=1 & cols!=2)]=NA
+plot(modes, pdbs=ca.trim, col=cols, signif=TRUE)
+```
+```{r}
+cols <- grps.psd
+cols[which(cols!=1 & cols!=3)]=NA
+plot(modes, pdbs=ca.trim, col=cols, signif=TRUE)
+```
+
+```{r}
+cols <- grps.psd
+cols[which(cols!=2 & cols!=3)]=NA
+plot(modes, pdbs=ca.trim, col=cols, signif=TRUE)
+```
+
+## Domain Analysis
+Dynamic regions are area in proteins are part of the protein that move as ridid bodies.
+```{r}
+# Identifying dynamic domains
+gs.xray <- geostas(ca.trim, k=2, fit = FALSE)
+
+# visualizing PCs with colored domains (Chain ID)
+m.ca <- mktrj(ca.xray, pc=1, chain=gs.xray$grps)
+```
+
+
+
+## References
+
+https://academic-accelerator.com/encyclopedia/carbonic-anhydrase

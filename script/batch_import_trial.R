@@ -1,8 +1,30 @@
 
-
-#install.packages("bio3d")
+#install all packages that are needed for this analysis
+library(dplyr)
+library(gifski)
+library(gganimate)
+library(patchwork)
+library(ggplot2)
 library(bio3d)
+library(gapminder)
 
+# downloading file from protien data bank
+CA <- read.pdb("1ca2")
+print(CA)
+CA$atom
+CA$atom[1:2, c("eleno", "elety", "x", "y", "z")]
+CA$atom$elety[1:2]
+plot.bio3d(CA$atom$b[CA$calpha], sse=CA, typ="l", ylab="B-factor")
+# getting to know the dimession of our coordinates "x,y,z"
+CA$xyz
+dim(CA$xyz)
+CA$xyz[ 1, atom2xyz(1:2)] #obtaining the coordinate of atom 2
+
+# How flexible is CA
+
+flex = nma(CA)
+
+plot(flex)
 ##batch import
 list.files("pdbs", pattern=".pdb") #call all of the .pdb file names in the folder
 
@@ -133,16 +155,5 @@ res=sapply(data_list, function(x) as.numeric(x[str_which(x, "RESOLUTION.")+1]))
 
 sapply(res, function(x) x[is.na(x)==F]) #just get the values that are not NA
 
-res[[101]]
-res[1]
-dat=data.frame(resolution=res)
-class(res[1])
-summary(res)
-res[5]
-remove(res[NA])
+# Now use ggplot
 
-#unlist dataset using unlist so that data is seen as numeric.
-unlist(res)
-is.na(res)
-complete.cases(res)
-na.omit(res)
