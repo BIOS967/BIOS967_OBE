@@ -1,0 +1,460 @@
+---
+title: "Understanding the structure of Carbonic Anhydrase Using R"
+author: "David Obe"
+date: "2023-12-08"
+output: html_document
+---
+
+## Carbonic Anhydrase
+Carbonic anhydrase (CA EC 4.2.1.1) is an enzyme that is responsible for the reversible catalysis of carbon dioxide to bicarbonate and hydrogen ion. Although this reaction can proceed without an enzyme, the rate at which it proceeds naturally is too slow compared to the rate at which CO2 is produced within living system making CA important enzyme in regulation of pH homeostasis within the cell.
+
+![*CA generalized reaction*](images/Screenshot%202023-11-20%20at%205.32.49%20PM.png){width="393"}
+
+"CAs are widespread in both prokaryotes and eukaryotes, with eight genetic families encoding them, the α-, β-, γ-, δ-, ζ-, η-, θ-, and ι-classes (Supuran, 2023). The α-class is found in mammals and presently have 15 isoforms with different catalytic activity, subcellular localization and and tissue distribution such as those found in the cytosol, membrane-bonded CAs, mitochondrial, and secreted form, of all these isoforms, human CA II (hCA II) is the most researched (Supuran, 2008, Kim *et al.,* 2016).
+
+CA has been linked to different physiological and pathological conditions and based on this, many modulators of CA has been developed to either inhibit or activate this enzyme in different disease conditions. Recently, CA II was suggested to be linked with Alzheimer disease a neurodegenerative disease that result into loss of memory.
+
+![*Involvement of hCA various diseases and the isoforms responsible (Supuran 2023)*.](images/Screenshot%202023-11-20%20at%205.35.56%20PM.png){width="551"}
+
+Therefore, understanding the structural changes that occur during the catalysis of this enzyme can help determine if this enzyme undergoes any motion during catalysis and how this is important for the activity of this enzyme. This analysis will also help in development of selective modulators of CAs in Alzheimer disease.
+
+## Loading Packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r, message=FALSE}
+library(ggplot2)
+library(gapminder)
+library(dplyr)
+library(gifski)
+library(gganimate)
+library(patchwork)
+library(bio3d)
+library(msa)
+library(bio3d.view)
+library(bigmemory)
+```
+
+## Reading Data from Protein Data Bank (PDB) database.
+
+PDB is a repository containing both experimentally resolved structures and computationally modeled structures. The PDB is under the watchful eyes of three musketeers forming a consortium (wwPDB). This consortium is between Europe (PDBe), Japan (PDBj), and the USA (RCSB PDB). They ensure that data published on these databases are free and accessible to the public.
+
+
+```{r}
+pdb <- read.pdb("1ca2")
+```
+
+```{r}
+pdb
+```
+
+The major attributes of a pdb file can be accessed using
+
+```{r}
+attributes(pdb)
+```
+
+Since there are about 15 isoforms of CA, we tried to compare the structure of this isoforms to obtain their structural similarity, because structure mostly determine function.
+
+```{r, message=FALSE, results="hide"}
+ids <- c("2FOY_A", "1CA2", "4XIW_B","5IPZ_A", "1KEQ_A", "3FE4_A", "7P1A_A", "2W2J_A", "6RQU_A", "1JCZ_A", "3CZV_A", "1RJ5_A", "1DMX_A")
+files <- get.pdb(ids, split = TRUE)
+```
+
+The get.pdb() function will download the requested files. Argument split = TRUE requests further that we want to extract particular chains, i.e. those specified by the _A suffix.
+
+```{r, message=FALSE}
+# Alligmnet
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+```
+```{r}
+pdbs
+```
+
+It's not enough to run alignment, we also would like to visualize our result. The active site of CA II contains His-94, His-96, Glu-106, His-119, and Thr-199. I would like to see the alignment in this positions. The result showed that this enzymes have different amino acids at these position which might suggest that they have different constituent at their active sites.
+
+```{r}
+pdbs$ali[1:13, c(94, 96, 106, 199)]
+```
+
+![Figure 3: Active site residues of CA (https://academic-accelerator.com/encyclopedia/carbonic-anhydrase)](images/Active_site_of_CAII_(cropped).jpg){width="252"}
+
+To further establish this, we processed to analyzing sequence similarity for these structures we also calculated the root mean standard deviation of this structures from each other.
+
+```{r}
+seqidentity(pdbs)
+```
+
+```{r, message=FALSE}
+rd <- rmsd(pdbs)
+```
+
+We can also cluster these structures into trees to better visualize the similarity.
+
+```{r}
+hc <- hclust(as.dist(rd))
+grps <- cutree(hc, k=3)
+
+# plot results as dendogram
+hclustplot(hc, k=3)
+```
+
+The figure above showed that 4XIW is different from all other structures. This might be because it is from *Chlamydomonas reinhartii* 
+
+## B-factor
+
+Carbonic anhdrase II is our focus therefore we proceeded to determine the dynamics of its (1CA2) structure. The B-factor also called Debye-Waller factor or temperature factor, is important in protein structure biology because it signifies the displacement of atoms from their mean position (Pandey *et al.,* 2023). The B-factor also give insight into flexibility, solvent accessibility, thermal stability, and activity of the region in protein.
+
+```{r}
+plot.bio3d(pdb$atom$b[pdb$calpha], sse=pdb, type="l", ylab="B-factor")
+```
+
+From the graph above, the end terminals of this protein seems to be more dynamic than the core part of the protein. To establish this, we decided to look into the possible conformation that CA II can possibly occur. 1CA2 is a monomeric metalloprotein containing zinc (Avvaru *et al.,* 2009). This structure is made up 256 amino acid residues and it was obtained from the erythrocytic of human (Eriksson *et al.,* 1988).
+
+```{r}
+pdb <- get.seq("1ca2")
+```
+
+```{r}
+blast <- blast.pdb(pdb)
+```
+
+```{r}
+plot.blast(blast)
+```
+
+The visualization of our blast search showed that their is a major shift in E-value scores which suggest that some of the sequences obtained are not relevant to our research and might result into false positives. Therefore, we set a cutoff value for our analysis. This yielded a total of 166 hits that have similar E-values as shown in the graph below.
+
+```{r}
+hits <- plot(blast, cutoff = 500)
+```
+
+```{r}
+head(hits$pdb.id)
+```
+
+## Obtaining PDB from PDB database
+We have used the cutoff option to reduce our entry from 237 to 166 based on E-value (i.e., how closely related that these sequences are to each other). We need to obtain the structure of these IDs for further analysis. In doing this, we will use the get.pdb to retrieve the structures from PDB and use pdbaln to align the structures.
+
+```{r, message=FALSE, results='hide'}
+# Retrieve data from PDB
+files <- get.pdb(hits$pdb.id, path = "pdbs", split = TRUE, gzip = TRUE)
+```
+```{r, message=FALSE, results='hide'}
+# Align structure files
+pdbs <- pdbaln(files, fit=TRUE, exefile="msa")
+```
+```{r, message=FALSE, results='hide'}
+# Visualize alignment
+ids <- basename.pdb(pdbs$id)
+plot(pdbs, labels=ids)
+```
+
+## Annotate collected data
+
+With the pdb.annotate() we can determine the origin of the sequences, i.e., species. All the structures obtained for this study are from human origin - Homo sapiens.
+
+```{r}
+anno <- pdb.annotate(ids)
+print(unique(anno$source))
+```
+
+## Analyzing conserved domains
+
+To analyze the conserved regions in these structural sequences, we will first have to calculate the sequence conservation and also determine the secondary structure element annotations.
+
+```{r}
+# calculate conserved domain
+cons <- conserv(pdbs, method = "entropy22")
+```
+
+```{r}
+# SSE annotation
+sse <- pdbs2sse(pdbs, ind = 1, rm.gaps = FALSE)
+```
+
+```{r}
+plotb3(cons, sse = sse, ylab = "sequence entropy")
+```
+
+The graph above shows sequence conservation per residue. Shannon's information entropy is used to measure the diversity per alignment column. The SSEs are depicted with dark (helices) and light grey (sheets) boxes in marginal regions.
+
+## Data cleaning
+
+From the sequence alignment overview graph above it is obvious that Some of the structures obtained might include missing residues or redundant structures. This can negatively affect our analysis, therefore we would need to remove these damaged sequences to reduce bias and improve computational speed.
+
+```{r}
+# remove structure with missing residues
+conn <- inspect.connectivity(pdbs, cut = 4.05)
+trim <- trim.pdbs(pdbs, row.inds=which(conn))
+```
+
+```{r, message=TRUE, results='hide'}
+# which structures were omitted?
+which(!conn)
+```
+
+```{r}
+# to remove conformational redundant structures
+rd <- filter.rmsd(trim$xyz, cutoff = 0.1, fit = TRUE)
+trim <- trim.pdbs(trim, row.inds = rd$ind)
+```
+
+```{r}
+# list of PDB codes of our final selection
+#ca.ids <- unlist(strsplit(basename(ca.pdbs$id), split=".pdb")) 
+
+ids <- unlist(strsplit(basename(trim$id), split=".pdb"))
+```
+
+```{r}
+# Visualize my pdb data
+print(trim, alignment = FALSE)
+```
+
+## Principal Component Analysis
+
+Principal component analysis (PCA) of the structure data using the function pca() is a statistical method used to transform a data set from complex to few important components that describe variability in the data set. For a protein structure, PCA can be use to determine major conformational variations (open, closed, and occluded) within an ensemble of structures. To obtain meaningful results we first superimpose all structures on the invariant core (function core.find()).
+
+```{r, message=FALSE, results='hide'}
+# locate invariant core
+core <- core.find(trim)
+```
+
+```{r, message=FALSE, results='hide'}
+# Now that we have determined the core, we can superimpose all structures to core
+trim$xyz = pdbfit(trim, core$c0.5A.xyz)
+```
+
+```{r}
+# Identifying and removing gaps
+gap.pos <- gap.inspect(trim$xyz)
+gap.res <- gap.inspect(trim$ali)
+
+# Perform PCA
+pc.xray <- pca.xyz(trim$xyz[,gap.pos$f.inds])
+
+plot(pc.xray)
+```
+
+The PCA can be improved by clustering the structures based on root mean square deviation.
+
+```{r, message=FALSE}
+# calculate RMSD
+rd <- rmsd(trim)
+
+# structure based clustering
+hc.rd <- hclust(dist(rd))
+grps.rd <- cutree(hc.rd, k=4)
+```
+
+```{r}
+plot(pc.xray$z[,1:2], col="gray50", pch=16, cex=1.3,
+     ylab="Pricipal Component 2", xlab="Principal Component 1")
+points(pc.xray$z[,1:2], col=grps.rd, pch=16, cex=0.9)
+```
+
+```{r}
+plot(pc.xray$z[,2:3], col="gray50", pch=16, cex=1.3,
+     ylab="Pricipal Component 2", xlab="Principal Component 3")
+points(pc.xray$z[,2:3], col=grps.rd, pch=16, cex=0.9)
+```
+
+From these results we can conclude that CA II majorly exist in to forms closed (red) and open (black).
+
+One can then use the identify() function to label and individual points.
+```{r}
+# Labeling IDs to the plot for PC 1 and 2
+df <- data.frame(x=pc.xray$z[,1], y=pc.xray$z[,2], ids=ids)
+col <- as.factor(grps.rd)
+```
+
+```{r, message=FALSE}
+# plot of PC2 against PC1
+p <- ggplot(df, aes(x,y))+
+  geom_point(aes(col=col), size=2) +
+  xlab("Principal Component 1") +
+  ylab("Principal Component 2") +
+  scale_color_discrete(name="Clusters") +
+  geom_text_repel(aes(label=ids), max.overlaps = 10) +
+  theme(legend.position = "none")
+
+p
+```
+
+```{r}
+# Labeling IDs to the plot for PC 1 and 2
+df <- data.frame(x=pc.xray$z[,2], y=pc.xray$z[,3], ids=ids)
+col <- as.factor(grps.rd)
+```
+
+```{r, message=FALSE}
+# plot of PC2 against PC1
+q <- ggplot(df, aes(x,y))+
+  geom_point(aes(col=col), size=2) +
+  xlab("Principal Component 1") +
+  ylab("Principal Component 2") +
+  scale_color_discrete(name="Clusters") +
+  geom_text_repel(aes(label=ids), max.overlaps = 20) +
+  theme(legend.position = "none")
+
+q
+```
+*Note: open (red), closed (green), and occluded (purple) conformations of our structures are shown above.
+
+```{r, echo=FALSE}
+mktrj(pc.xray, pc=1,
+      resno=trim$resno[1, gap.res$f.inds],
+      resid=trim$resid[1, gap.res$f.inds])
+```
+```{r, echo=FALSE}
+# clustering by conformation
+pdbfit(trim.pdbs(trim, row.inds = which(grps.rd==1)), outpath="grps1") ## closed
+```
+
+```{r, message=FALSE, results='hide', echo=FALSE}
+# clustering by conformation
+pdbfit(trim.pdbs(trim, row.inds = which(grps.rd==2)), outpath="grps2") ## open
+```
+
+```{r, message=FALSE, results='hide', echo=FALSE}
+pdbfit(trim.pdbs(trim, row.inds = which(grps.rd==3)), outpath="grps3") ## occluded
+```
+
+## Nomal mode Analysis
+
+This is a way of predicting protein flexibility and potential conformational changes.
+
+```{r}
+# Note: muticore is permitted on windows
+modes <- nma(trim, rm.gaps=TRUE, ncore=1, bigmem=TRUE)
+```
+
+This modes contains aligned normal mode data including fluctuations, RMSIP data, and aligned eigennvectors. A short summary of the modes object is shown below
+
+```{r}
+print(modes)
+```
+
+```{r}
+plot(modes, pdbs=trim, col=grps.rd, label=NULL)
+```
+
+The fluctuation wave for CA II. Each line represent mode fluctuation for individual structures. Green (occluded), Black (Open), and Red (Closed).
+
+```{r}
+hc.nma <- hclust(as.dist(1-modes$rmsip))
+grps.nma <- cutree(hc.nma, k=4)
+
+heatmap(1-modes$rmsip, distfun = as.dist, labRow = ids, labCol = ids,
+        ColSideColors = as.character(grps.nma), RowSideColors = as.character(grps.nma))
+```
+The heatmap plot did not showed no observable correlation
+
+## Fluctuation Analysis
+Looking at the different conformations we have so far, only two conformation are pronounced, the open (black) and closed conformation (red). If we compare this two mode fluctuations, we can reveal specific regions with distinct flexibility patterns.
+
+```{r}
+cols <- grps.rd
+cols[which(cols!=1 & cols!=2)]=NA
+plot(modes, pdbs=trim, col=cols, signif=TRUE)
+```
+
+The figure above is a comparison between the open (black) and closed (red). conformation.
+
+## Measure of mode analysis
+This method allows for clustering of similar proteins based on the predicted dynamics. For this study we demonstrated the use of root mean squared inner product (RMSIP), squared inner product (SIP), covariance overlap, bhattacharyya coefficient, and PCA of the corresponding covariance matrices.
+
+```{r}
+# Similarity of atomic fluctuations
+sip <- sip(modes)
+hc.sip <- hclust(as.dist(1-sip), method = "ward.D2")
+grps.sip <- cutree(hc.sip, k=4)
+```
+
+```{r}
+# Squared inner product (SIP) plot
+hclustplot(hc.sip, k=4, colors = grps.rd, labels = ids, cex=0.7, main="SIP", fillbox = FALSE)
+par(fig=c(.65, 1, .45, 1), new = TRUE)
+plot(pc.xray$z[,1:2], col="grey50", pch=16, cex=1.1,
+     ylab="", xlab="", axes=FALSE, bg="red")
+points(pc.xray$z[,1:2], col=grps.sip, pch=16, cex=0.9)
+box()
+```
+
+This figure shows the hierarchical clustering of structures based on the similarity of atomic fluctuations calculated from normal mode analysis. Colors depict associated conformations, green (occluded), red (closed), and black (open).
+
+```{r}
+# Root mean squared inner product (RMSIP)
+rmsip <- rmsip(modes)
+hc.rmsip <- hclust(dist(1-rmsip), method = "ward.D2")
+grps.rmsip <- cutree(hc.rmsip, k=4)
+
+hclustplot(hc.rmsip, k=4, colors = grps.rd, labels = ids, cex=0.7, main="RMSIP", fillbox = FALSE)
+par(fig=c(.65, 1, .45, 1), new = TRUE)
+plot(pc.xray$z[,1:2], col="grey50", pch=16, cex=1.1,
+     ylab="", xlab="", axes=FALSE, bg="red")
+points(pc.xray$z[,1:2], col=grps.sip, pch=16, cex=0.9)
+box()
+```
+
+```{r}
+# covariance overlap
+co <- covsoverlap(modes, subset=200)
+hc.co <- hclust(as.dist(1-co), method = "ward.D2")
+grps.co <- cutree(hc.co, k=4)
+
+hclustplot(hc.co, k=4, colors = grps.rd, labels = ids, cex=0.7, main="covariance overlap", fillbox = FALSE)
+par(fig=c(.65, 1, .45, 1), new = TRUE)
+plot(pc.xray$z[,1:2], col="grey50", pch=16, cex=1.1,
+     ylab="", xlab="", axes=FALSE, bg="red")
+points(pc.xray$z[,1:2], col=grps.sip, pch=16, cex=0.9)
+box()
+```
+
+```{r}
+# Bhattacharyya coefficient
+covs <- cov.enma(modes)
+bc <- bhattacharyya(modes, covs=covs)
+hc.bc <- hclust(dist(1-bc), method = "ward.D2")
+grps.bc <- cutree(hc.bc, k=4)
+
+hclustplot(hc.bc, k=4, colors = grps.rd, labels = ids, cex=0.7, main="Bhattacharyya coefficient", fillbox = FALSE)
+par(fig=c(.65, 1, .45, 1), new = TRUE)
+plot(pc.xray$z[,1:2], col="grey50", pch=16, cex=1.1,
+     ylab="", xlab="", axes=FALSE, bg="red")
+points(pc.xray$z[,1:2], col=grps.sip, pch=16, cex=0.9)
+box()
+```
+
+```{r}
+# PCA of covariance matrices.
+pc.covs <- pca.array(covs)
+hc.covs <- hclust(dist(pc.covs$z[,1:2]), method = "ward.D2")
+grps.covs <- cutree(hc.covs, k=4)
+
+hclustplot(hc.covs, k=4, colors = grps.rd, labels = ids, cex=0.7, main="PCA of covariance matrice", fillbox = FALSE)
+par(fig=c(.65, 1, .45, 1), new = TRUE)
+plot(pc.xray$z[,1:2], col="grey50", pch=16, cex=1.1,
+     ylab="", xlab="", axes=FALSE, bg="red")
+points(pc.xray$z[,1:2], col=grps.sip, pch=16, cex=0.9)
+box()
+```
+
+## Conclusion
+
+This analysis showed that CA II majorly exist in the open and closed conformations. Further investigation into this might provide insight into the method by which this enzyme is regulated.
+
+This class really improved me from less competent in R to more competent user of R, Thank you Dr. Dai Shizuka for putting together this class. I hope the class videos can be accessible to us much later, because UNL will often restrict our canvas access.
+
+## References
+
+Grant, B.J., A.P.D.C Rodrigues, K.M. Elsawy, A.J. Mccammon, and L.S.D. Caves. 2006. “Bio3d: An R Package for the Comparative Analysis of Protein Structures.” Bioinformatics 22: 2695–6. doi:10.1093/bioinformatics/btl461.
+https://www.chegg.com/homework-help/questions-and-answers/biochemistry-describe-4-steps-catalytic-mechanism-carbonic-anhydrase-simple-terms-better-p-q40912438
+Supuran CT. (2008). Carbonic anhydrases: novel therapeutic applications for inhibitors and activators. Nat Rev Drug Discov. Feb;7(2):168-81. doi: 10.1038/nrd2467. PMID: 18167490
+Supuran C. T. (2023). A simple yet multifaceted 90 years old, evergreen enzyme: Carbonic anhydrase, its inhibition and activation, BMC Letters, Volume 93, 2023, 129411, ISSN 0960-894X, https://doi.org/10.1016/j.bmcl.2023.129411.
+Skjaerven, L., X.Q. Yao, G. Scarabelli, and B.J. Grant. 2015. “Integrating Protein Structural Dynamics and Evolutionary Analysis with Bio3D.” BMC Bioinformatics 15: 399. doi:10.1186/s12859-014-0399-6.
