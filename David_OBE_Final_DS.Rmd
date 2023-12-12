@@ -25,8 +25,6 @@ Therefore, understanding the structural changes that occur during the catalysis 
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
-
 ```{r, message=FALSE}
 library(ggplot2)
 library(gapminder)
@@ -46,7 +44,6 @@ library(rgl)
 ## Reading Data from Protein Data Bank (PDB) database.
 
 PDB is a repository containing both experimentally resolved structures and computationally modeled structures. The PDB is under the watchful eyes of three musketeers forming a consortium (wwPDB). This consortium is between Europe (PDBe), Japan (PDBj), and the USA (RCSB PDB). They ensure that data published on these databases are free and accessible to the public. This search returned 237 hits.
-
 
 ```{r}
 pdb <- read.pdb("1ca2")
@@ -69,12 +66,13 @@ ids <- c("2FOY_A", "1CA2", "4XIW_B","5IPZ_A", "1KEQ_A", "3FE4_A", "7P1A_A", "2W2
 files.ids <- get.pdb(ids, split = TRUE)
 ```
 
-The get.pdb() function will download the requested files. Argument split = TRUE requests further that we want to extract particular chains, i.e. those specified by the _A suffix.
+The get.pdb() function will download the requested files. Argument split = TRUE requests further that we want to extract particular chains, i.e. those specified by the \_A suffix.
 
 ```{r, message=FALSE, results='hide'}
-# Alignmnet
+# Alignment
 pdbs <- pdbaln(files.ids, fit = TRUE, exefile="msa")
 ```
+
 ```{r, results='hide'}
 pdbs
 ```
@@ -97,13 +95,16 @@ rd <- rmsd(pdbs)
 
 We can also cluster these structures into trees to better visualize this similarity.
 
-```{r}
+```{r, eval=TRUE}
 hc <- hclust(as.dist(rd))
 grps <- cutree(hc, k=3)
 
 # plot results as dendogram
 hclustplot(hc, k=3)
 ```
+
+![](unnamed-chunk-11-1.png){width="537"}
+
 The figure above showed that 4XIW is different from all other structures. This might be because it is from *Chlamydomonas reinhartii* as shown below.
 
 ```{r}
@@ -115,9 +116,12 @@ print(unique(anno$source))
 
 Carbonic anhdrase II is our focus therefore we proceeded to determine the dynamics of its (1CA2) structure. The B-factor also called Debye-Waller factor or temperature factor, is important in protein structure biology because it signifies the displacement of atoms from thier mean position (Pandey *et al.,* 2023). The B-factor also give insight into flexibility, solvent accessibility, thermal stability, and activity of the region in protein.
 
-```{r}
+```{r, eval=FALSE}
 plot.bio3d(pdb$atom$b[pdb$calpha], sse=pdb, type="l", ylab="B-factor")
 ```
+
+![B-factor showing dynamics in our protein structure. Black bar (Alpha-helix), gray bar (beta-sheets)](unnamed-chunk-13-1.png){width="537"}
+
 ## Retrieving sequence data from PDB
 
 From the graph above, the end terminals of this protein seems to be more dynamic than the core part of the protein. To establish this, we decided to look into the possible conformation that CA II can possibly occur.
@@ -129,23 +133,28 @@ blast <- blast.pdb(pdbs)
 
 1CA2 is a monomeric metalloprotein containing zinc (Avvaru *et al.,* 2009). This structure is made up 256 amino acid residues and it was obtained from the erythrocytic of human (Eriksson *et al.,* 1988).
 
-![Figure 3: Active site residues of CA (https://academic-accelerator.com/encyclopedia/carbonic-anhydrase)](images/Active_site_of_CAII_(cropped).jpg){width="252"}
+![Figure 3: Active site residues of CA (<https://academic-accelerator.com/encyclopedia/carbonic-anhydrase>)](images/Active_site_of_CAII_(cropped).jpg){width="252"}
 
 The visualization of our blast search showed that their is a major shift in E-value scores which suggest that some of the sequences obtained are not relevant to our research and might result into false positives. Therefore, we set a cutoff value for our analysis. This yielded a total of 166 hits that have similar E-values as shown in the graph below.
 
-```{r}
+```{r, eval=FALSE}
 plot.blast(blast)
 ```
 
+![](unnamed-chunk-15-1.png){width="348"}
+
 Based on the E-value and identity score, we set a cutoff for our research. This will reduce the unrelated sequences and decrease processing time.
 
-```{r}
+```{r, eval=FALSE}
 hits <- plot(blast, cutoff = 500)
 ```
+
+![](unnamed-chunk-16-1.png){width="346"}
 
 ```{r}
 hits$pdb.id
 ```
+
 It is the structure that we need to work with, therefore we use the get.pdb() to retrieve the structures of our 166 closely related structures.
 
 ```{r, message=F, eval=FALSE}
@@ -156,23 +165,28 @@ files <- get.pdb(hits$pdb.id, path = "pdbs", split = TRUE, gzip = TRUE)
 ```{r}
 load("data/files.rdata")
 ```
+
 The sequences obtained are then aligned using the pdbaln() function.
 
 ***DS: since this chunk was giving problems when knitting, I suggest running it separately & saving the results. Then, for knitting this document, you can just import the saved .rdata file and proceed***
+
 ```{r, message=FALSE, results='hide', eval=F}
 # Align structure files
 pdbs <- pdbaln(files, fit=TRUE, exefile="msa")
 ```
 
 ***Here is how you would save the output (not run on knitting)***
+
 ```{r, eval=F}
 save(pdbs, file="data/pdbs.rdata")
 ```
 
 ***And here is how you would load the saved output (run this)***
+
 ```{r}
 load("pdbs.rdata")
 ```
+
 We visualized the alignment to identify gaps in our sequence alignment.
 
 ```{r}
@@ -180,6 +194,7 @@ We visualized the alignment to identify gaps in our sequence alignment.
 ids <- basename.pdb(pdbs$id)
 plot(pdbs, labels=ids)
 ```
+
 To identify conserved domains in our data we used the conserv() function.
 
 ```{r}
@@ -196,6 +211,7 @@ sse <- pdbs2sse(pdbs, ind = 1, rm.gaps = FALSE)
 # plot conservation per residue 
 plotb3(cons, sse = sse, ylab = "sequence entropy")
 ```
+
 The plot showed the conserved domains with the black (alpha helix) and gray bar (beta sheets). To know why we have such a highly conserved regions in our structures, we check the annotation/source of our sequences.
 
 ```{r}
@@ -224,7 +240,6 @@ head(trim)
 trim$id
 ```
 
-
 ```{r}
 # list of PDB codes of our final selection
 
@@ -237,13 +252,13 @@ print(trim, alignment = FALSE)
 ```
 
 ## Principal component analysis
+
 PCA is a statistical method used in transforming data sets to few important components grouping them based on similarity or variation with an ensemble of structures. For good analysis we first have to superimpose all the structures.
 
 ```{r, message=FALSE, results='hide'}
 # locate invariant core
 core <- core.find(trim)
 ```
-
 
 ```{r}
 # Now that we have determined the core, we can superimpose all structures to core
@@ -268,13 +283,12 @@ pc.xray <- pca.xyz(trim$xyz[,gap.pos$f.inds])
 plot(pc.xray)
 ```
 
-We need to calculate the pairwise root mean standard deviation (RMSD) for structural ensemble. 
+We need to calculate the pairwise root mean standard deviation (RMSD) for structural ensemble.
 
 ```{r, message=FALSE}
 # calculate RMSD
 rd <- rmsd(trim)
 ```
-
 
 ```{r}
 # structure based clustering
@@ -333,7 +347,6 @@ geom_text_repel(aes(label=ids), max.overlaps = 20) +
 q
 ```
 
-
 ## Fluctuation analysis
 
 Proteins exist can exist in open (black), closed (red), or occluded (green). This analysis seeks to understand the state in which CA II exist.
@@ -369,12 +382,13 @@ ColSideColors = as.character(grps.nma), RowSideColors = as.character(grps.nma))
 cols <- grps.rd
 cols[which(cols!=1 & cols!=2)]=NA
 ```
+
 ```{r}
 plot(modes, pdbs=trim, col=cols, signif=TRUE)
 ```
 
-
 ## Measure for modes comparison
+
 We can cluster structures based on fluctuation using squared inner product (SIP), Root mean squared inner product (RMSIP), covariance overlap, Bhattacharyya coefficient, and PCA of covariance matrices.
 
 ```{r}
@@ -444,6 +458,7 @@ pc.covs <- pca.array(covs)
 hc.covs <- hclust(dist(pc.covs$z[,1:2]), method = "ward.D2")
 grps.covs <- cutree(hc.covs, k=4)
 ```
+
 ```{r}
 hclustplot(hc.covs, k=4, colors = grps.rd, labels = ids, cex=0.7, main="PCA of covariance matrices", fillbox = FALSE)
 par(fig=c(.65, 1, .45, 1), new = TRUE)
@@ -457,10 +472,10 @@ box()
 
 My goal for registering for this class was achieved due to patient teaching and prompt feedback from Dr. Shizuka. I am glad to find an R package created by Dr. Barry Grant that relates to my field of study - Structural Biology. Analysis was performed using Bio3D a product of grant lab.
 
-
 ## References
-Grant B.J, Rodrigues A.P.C., ElSawy K.M., McCammon J.A., Caves L.S.D. (2006). Bio3d: an R package for the comparative analysis of protein structures, Bioinformatics, Volume 22, Issue 21, November 2006, Pages 2695–2696, https://doi.org/10.1093/bioinformatics/btl461
 
-Supuran, C. Carbonic anhydrases: novel therapeutic applications for inhibitors and activators. Nat Rev Drug Discov 7, 168–181 (2008). https://doi.org/10.1038/nrd2467
+Grant B.J, Rodrigues A.P.C., ElSawy K.M., McCammon J.A., Caves L.S.D. (2006). Bio3d: an R package for the comparative analysis of protein structures, Bioinformatics, Volume 22, Issue 21, November 2006, Pages 2695--2696, <https://doi.org/10.1093/bioinformatics/btl461>
+
+Supuran, C. Carbonic anhydrases: novel therapeutic applications for inhibitors and activators. Nat Rev Drug Discov 7, 168--181 (2008). <https://doi.org/10.1038/nrd2467>
 
 Supuran CT. Carbonic anhydrase versatility: from pH regulation to CO2 sensing and metabolism. Front Mol Biosci. 2023 Nov 10;10:1326633. doi: 10.3389/fmolb.2023.1326633. PMID: 38028557; PMCID: PMC10676200.
